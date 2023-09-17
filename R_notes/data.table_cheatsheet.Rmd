@@ -1,0 +1,192 @@
+---
+title: "Data Table Cheatsheet"
+author: "Carel"
+date: "2023-09-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(data.table)
+library(nycflights13)
+df <- setDT(nycflights13::flights)
+```
+
+# Big Picture
+
+[Reference](https://cran.r-project.org/web/packages/data.table/vignettes/datatable-intro.html)
+
+The syntax of `data.table` is as follows : 
+
+    DT[i, j, by]
+
+This syntax is meant to resemble SQL. The general form can be translated into equivalent SQL clauses as follows : 
+
+    R :         i               j           by
+    SQL : WHERE & ORDER BY | SELECT | UPDATE & GROUP BY
+    
+**NOTE** that we can also combine dplyr piping syntax with data.table query syntax. The key is to use the dot `.` placeholder which refers to the object returned from the LHS of the pipe %>%. More information [here](https://martinctc.github.io/blog/using-data.table-with-magrittr-pipes-best-of-both-worlds/)
+
+# Filtering & Ordering
+
+First element of the `data.table` syntax. Meant to be equivalent to the `WHERE` clause in SQL. In this element the ordering is also handled. 
+
+```{r selecting}
+# Multiple Filtering with ordering
+df[year<2014 & month==1][rev(order(distance, air_time))]
+# OR
+df[year<2014 & month==1] %>% .[rev(order(distance, air_time))]
+# Remember that since filtering & Ordering are the ith element, we will need to chain two calls together (either way works)
+```
+
+# Column Selection
+
+Second element of the `data.table` syntax. Meant to be the equivalent of the `SELECT` statement in SQL. 
+
+Note that in selecting the columns, if only one field is selected a vector is returned by default. Can wrap the desired column in a `list()` or the shorthand version of `.()` to return a `data.table` object instead. 
+```{r basic_selection}
+# Selecting two columns
+df[, .(carrier, flight)]
+# OR 
+c <- c("carrier", "flight")
+df[, c, with=FALSE]
+# OR
+df[,]
+```
+
+## Updating
+
+Fill explanation fo the `:=` assignment operator found [here](https://cran.r-project.org/web/packages/data.table/vignettes/datatable-reference-semantics.html). 
+
+TLDR; By default most operations result in a new dataset. The `:=` operator instead makes neither a shallow of deep copy of the `data.table` and instead updates the columns in-place (altering the original table directly). This means less overhead. 
+
+After manipulation there is **no need** to reassign the resulting data back to the original variable, since the updating is done **in-place**. Although a reassignment isn't required, adding it will not break the manipulation. 
+
+It's mentioned in the vignette that the result is returned invisibly anyway, so including the assignment operator is akin to reassigning the object back to itself. 
+
+**NOTE** that the operator updates only **a subset** of the data-frame, depending on the desired condition. 
+
+### Subset Updating & column addition
+
+This syntax can be used to either **update existing columns** or **add new columns** to the existing table. 
+```{r table_updating}
+# Copy the first 1000 rows of the flights data for playing around
+tdf <- copy(df[1:1000])
+
+# Edit the flight numbers of all "UA" carrier entries
+tdf[carrier=="UA", flight:=100]
+# only flight number 100 remains
+unique(tdf[carrier=="UA", flight])
+```
+
+### Multiple Column Addition
+
+Syntax for altering multiple columns in one command
+```{r column_addition}
+tdf[, `:=`(speed = distance / (air_time/60), # speed in mph (mi/h)
+               delay = arr_delay + dep_delay)]   # delay in minutes
+# OR
+# For this method the RHS need only be a list, no matter how its generated.
+tdf[, c("speed", "delay"):=list(
+  distance/(air_time/60), 
+  arr_delay+dep_delay)]
+# IMO the first way is more elegant.
+```
+
+### Deleting Columns
+
+We can similarly remove columns in-place.
+```{r}
+# Note that if the specified columns do not exist there will be a warning
+tdf[, c("delay", "speed"):=NULL]
+```
+
+# Aggregation
+
+As in SQL, one can perform aggregation at the whole-table level to obtain summary statistics. 
+
+```{r}
+# How many entries where the arrival time was later than scheduled?
+df[, sum(arr_time > sched_arr_time, na.rm = T)] # Returns a value
+df[, .(sum(arr_time > sched_arr_time, na.rm = T))] # Returns the value in a data-frame
+
+# Multiple filtering conditions along with multiple aggregations
+df[
+  year<2014 & month==1
+  , .(mean_value=mean(air_time+distance, na.rm=T), max_value = max(air_time+distance, na.rm=T))
+]
+```
+
+# Group By Aggregation
+
+Last element of the `data.table` syntax. Equivalent to the `GROUP BY` syntax in SQL. 
+
+Note also that `.N` is a special `data.table` syntax used to denote the number of entries. When used in conjunction with a group by aggregation we get the number entries in each group. 
+
+```{r}
+# How many entries in each carrier?
+df[, .N, by = .(carrier)] # don't actually need the .() for the group by
+df[, length(tailnum), by=carrier] # Equivalent aside from the column name
+
+# Retaining the order in which the groups first appear is intentional. However we may wish to sort by the grouping variables. Use keyby to do this, which by default will arrange the groupby columns in ascending order. 
+df[
+  carrier=="AA"
+  , .(mean_value=mean(air_time+distance, na.rm=T), max_value = max(air_time+distance, na.rm=T))
+  , keyby=.(origin, dest) # To arrange in descending order, chain the commands
+]
+```
+
+# Joins
+
+[Join Types](https://i.stack.imgur.com/vb1V6.png)
+[reference](https://medium.com/analytics-vidhya/r-data-table-joins-48f00b46ce29)
+
+## Basic Syntax & Right Outer Join
+
+Join syntax in `data.table` follows the form `LHS[RHS, on = .(<field>)]`, or equivalently `LHS[RHS, on = c(x = "y")]` which will join column x of LHS to column y of RHS. Use this second form when joining on multiple fields. 
+
+By default this is a right outer join (all records in the right table with matching information from the left table) where **LHS is the left table and RHS is the right table**. 
+
+```{r sample_join_data}
+set.seed(42)
+big <- data.table( 
+  id = LETTERS[2:11],
+  a = sample(101:105, 10, replace = TRUE),
+  b = sample(200:300, 10)
+)
+small <- data.table(
+  id = LETTERS[1:5],
+  y = sample(1:5, 5, replace = TRUE),
+  z = sample(10:20, 5) 
+)
+
+# A conventional right outer join
+small_joined <- big[small, on =.(id)]
+```
+
+## Inner Join
+
+Need to set the `nomatch` parameter to `NULL` or 0 to perform an inner join. 
+```{r inner_join}
+inner_joined <- big[small, on=.(id), nomatch=NULL]
+```
+
+## Anti Join
+
+By default this performs a LEFT anti join (records that appear only in the left table)
+```{r anti_join}
+big[!small, on=.(id)]
+```
+
+## Semi Join
+
+A semi join is a kind of reverse anti join. It returns only the rows in the LHS table that have a match in the RHS table. 
+```{r semi_join}
+big[na.omit(big[small, on=.(id), which=T])]
+```
+
+
+
+
+
