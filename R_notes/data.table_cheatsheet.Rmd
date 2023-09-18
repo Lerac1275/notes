@@ -136,6 +136,8 @@ df[
   , keyby=.(origin, dest) # To arrange in descending order, chain the commands
 ]
 ```
+Note that the `keyby` argument will set the `keys` of the returned object to be the columns specified. More on keys later. 
+
 
 # Joins
 
@@ -186,6 +188,27 @@ A semi join is a kind of reverse anti join. It returns only the rows in the LHS 
 big[na.omit(big[small, on=.(id), which=T])]
 ```
 
+# Keys
+
+Reference [here](https://jangorecki.gitlab.io/data.cube/library/data.table/doc/datatable-keys-fast-subset.html). Note that the original vignette seems to be inaccessible on CRAN, hence this repo link instead.
+
+Conventional `data.frame` objects have a `rownames`(this is also the function used to obtain/set it) attribute, used to identify each row in the data-frame. These function as the *indexes* to the rows of the data-frame and hence each row can only have **one** `rowname` which must be **unique**.
+
+`data.table` never uses rownames, and by default converting a `data.frame` object to a `data.table` object will cause that attribute to be lost. Once can preserve this attribute by using `keep.rownames = TRUE` in `as.data.table()`, which will create a new column `rn` with the row names. 
+
+`data.table` instead uses `keys`, which may be understood as **supercharged rownames**.
+
+Keys can be set on multiple columns of different types, and need not be unique (duplicate key values are allowed).
+
+Setting a key does two things; 
+
+1. It physically reorders the rows of the data.table by the column(s) provided by *reference*, always in *increasing* order.
+2. Marks those columns as key columns by setting an attribute called sorted to the data.table.
+
+The specified column(s) form one key. Since the rows are sorted by the key, rows in a `data.table` object can only be sorted in one way hence there can be at most one key.
+```{r }
+
+```
 
 
 
