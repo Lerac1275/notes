@@ -36,3 +36,22 @@ pyenv install 3.9.11
 # create a virtual environment 
 pyenv virtualenv 3.9.11 python_3.9.11_env
 ```
+
+Once in in the folder of your choice, create the `.python-version` file which will automatically activate the desired pyenv version once within the folder using : 
+```
+pyenv local <virtualenv_name>
+```
+
+To install packages specifically to that python version : 
+```
+pyenv exec pip install <package name>
+# list packages for this specific pyenv version of python
+pyenv exec pip list
+```
+
+Resources : 
+
+  1. [Article on pyenv version management](https://realpython.com/intro-to-pyenv/#why-use-pyenv)
+  
+  2. [`pip` exec with pyenv](https://stackoverflow.com/a/74415667)
+
