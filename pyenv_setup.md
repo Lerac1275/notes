@@ -42,12 +42,21 @@ Once in in the folder of your choice, create the `.python-version` file which wi
 pyenv local <virtualenv_name>
 ```
 
-To install packages specifically to that python version : 
+To install packages specifically to that virtual environment you can simply call pip as you would normally. Note that it will only install to that particular virtual environment. Other venvs with the same base python version will not have that package.  
+
+You may also manually instruct the installation to the pyenv version using: 
 ```
 pyenv exec pip install <package name>
 # list packages for this specific pyenv version of python
 pyenv exec pip list
 ```
+This is a holdover for when I thought calling the conventional `pip install <package>` would still install to the system python. Tried it on my mac and it doesn't appear to be the case. Including it here just in case. 
+
+Delete a virtualenv using :
+```
+pyenv uninstall 3.XX.X/envs/env_name
+```
+Find the proper path after calling `pyenv versions`
 
 Resources : 
 
