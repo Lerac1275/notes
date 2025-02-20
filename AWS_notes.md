@@ -6,7 +6,7 @@
 - Once provisioned and running, select the instance & go to the tab for ssh connection.
 - Copy the command to ssh into the instance from the terminal. Replace the keypair cert path with the path to your saved private key file.
 
-## To seup Python:
+## To setup Python:
 - For python installation you can follow [this guide](https://towardsthecloud.com/amazon-ec2-install-python-pip). Note that you can specify the version you would like to install (e.g. `sudo yum install python3.11 -y` will install python3.11)
     - Call it with `python3.11`
 - If pip wasn't installed with the previous command you can check out [this thread](https://stackoverflow.com/a/55158505/13479945). 
