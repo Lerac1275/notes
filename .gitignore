@@ -1,3 +1,6 @@
+# Code Workspace
+*.code-workspace
+
 # python version
 .python-version
 
