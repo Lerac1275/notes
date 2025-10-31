@@ -1,3 +1,9 @@
+# Others
+chinese.csv
+chinese_flashcards.ipynb
+chinese_out.csv
+.DS_Store
+
 # Code Workspace
 *.code-workspace
 
